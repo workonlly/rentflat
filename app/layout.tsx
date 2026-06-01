@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   description: "Rent, buy, and sell properties effortlessly with Orentra.",
 };
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,6 +32,12 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-9439206564301038"
+        />
+      </head>
       {/* Set a clean base background and text color */}
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
         <SessionWrapper>
