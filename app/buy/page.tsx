@@ -88,8 +88,48 @@ export default function SalePage() {
   const [constructionFilter, setConstructionFilter] = useState('all');
   const [savingPostId, setSavingPostId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    const verifyToken = async () => {
+      const token = localStorage.getItem('token23');
+
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          localStorage.removeItem('token23');
+          localStorage.removeItem('username');
+          localStorage.removeItem('userId');
+          router.replace('/login');
+          return;
+        }
+
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Error verifying token:', error);
+        router.replace('/login');
+      }
+    };
+
+    verifyToken();
+  }, [router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const loadProjects = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/post/all1`, {
@@ -107,9 +147,13 @@ export default function SalePage() {
     };
 
     loadProjects();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const loadSavedIds = async () => {
       const token = localStorage.getItem('token23');
 
@@ -136,7 +180,7 @@ export default function SalePage() {
     };
 
     loadSavedIds();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleSaveProperty = async (postId: string) => {
     const token = localStorage.getItem('token23');
@@ -208,6 +252,14 @@ export default function SalePage() {
 
     return matchesSearch && matchesBudget && matchesBhk && matchesPropertyType && matchesConstruction;
   });
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-sm text-slate-600">
+        Checking authentication...
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-slate-50 py-10 font-sans min-h-screen">
