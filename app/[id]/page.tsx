@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
-import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
@@ -23,7 +23,7 @@ type Project = {
   id: number;
   imageurl: string[] | null;
   locality: string | null;
-  message: string[] | null;
+  message: Record<string, string> | null;
   plotarea: string | null;
   postid: string;
   price: string | null;
@@ -95,6 +95,7 @@ const formatDate = (dateString: string | null) => {
 
 export default function Page() {
   const params = useParams();
+  const router = useRouter();
 
   const postId = useMemo(() => {
     const value = params?.id;
@@ -104,6 +105,21 @@ export default function Page() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [contactDetails, setContactDetails] = useState<{
+    name: string | null;
+    email: string | null;
+    phonenumber: string | null;
+  } | null>(null);
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [commentInput, setCommentInput] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const hasIncrementedRef = useRef(false);
 
   const autoplay = useRef(
     Autoplay({
@@ -143,14 +159,12 @@ export default function Page() {
     };
   }, [emblaApi, onSelect]);
 
-  const navigate = useNavigate();
-
   useEffect(() => {
     const fetchProject = async () => {
       try {
         const token = localStorage.getItem('token23');
         if (!token) {
-          navigate('/login');
+          router.push('/login');
           return;
         }
 
@@ -173,12 +187,154 @@ export default function Page() {
     };
 
     if (postId) fetchProject();
+  }, [postId, router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token23');
+    const userId = localStorage.getItem('userId');
+
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    setCurrentUserId(userId);
+
+    const fetchComments = async () => {
+      if (!postId) return;
+
+      setCommentLoading(true);
+      setCommentError(null);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/user/message/${postId}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || 'Failed to load comments');
+        }
+
+        setComments(result.data || {});
+      } catch (error) {
+        console.error('Failed to load comments:', error);
+        setCommentError('Unable to load comments right now.');
+      } finally {
+        setCommentLoading(false);
+      }
+    };
+
+    fetchComments();
+  }, [postId, router]);
+
+  useEffect(() => {
+    const incrementViews = async () => {
+      if (!postId || hasIncrementedRef.current) {
+        return;
+      }
+
+      hasIncrementedRef.current = true;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/increment/api/post/${postId}`, {
+          method: 'PUT',
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success && typeof result.views === 'number') {
+          setProject((current) => (current ? { ...current, views: result.views } : current));
+        }
+      } catch (error) {
+        console.error('Failed to increment property views:', error);
+      }
+    };
+
+    incrementViews();
   }, [postId]);
 
   useEffect(() => {
     setSelectedIndex(0);
     if (emblaApi) emblaApi.scrollTo(0);
   }, [project?.postid, emblaApi]);
+
+  const handleOpenContact = useCallback(async () => {
+    if (!postId) return;
+
+    setContactOpen(true);
+    setContactLoading(true);
+    setContactError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/contact/${postId}`);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to load contact details');
+      }
+
+      setContactDetails(result.data || null);
+    } catch (error) {
+      console.error('Failed to load contact details:', error);
+      setContactError('Unable to load contact details right now.');
+    } finally {
+      setContactLoading(false);
+    }
+  }, [postId]);
+
+  const handleCloseContact = useCallback(() => {
+    setContactOpen(false);
+  }, []);
+
+  const handleSubmitComment = useCallback(async () => {
+    if (!postId) return;
+
+    const token = localStorage.getItem('token23');
+
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    if (!commentInput.trim()) {
+      setCommentError('Please enter a message.');
+      return;
+    }
+
+    setCommentSubmitting(true);
+    setCommentError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/message/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: commentInput.trim() }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to save comment');
+      }
+
+      setComments(result.data || {});
+      setCommentInput('');
+    } catch (error) {
+      console.error('Failed to save comment:', error);
+      setCommentError(
+        error instanceof Error ? error.message : 'Unable to save comment right now.'
+      );
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }, [commentInput, postId, router]);
 
   if (loading) {
     return (
@@ -504,6 +660,54 @@ export default function Page() {
 )}
             </section>
 
+            <section className="rounded-[32px] border border-white/70 bg-white/90 p-6 shadow-sm backdrop-blur sm:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Comments
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-slate-900">
+                Discussion
+              </h3>
+
+              <div className="mt-5 space-y-3">
+                <textarea
+                  value={commentInput}
+                  onChange={(event) => setCommentInput(event.target.value)}
+                  rows={3}
+                  placeholder="Write your comment about this property..."
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={handleSubmitComment}
+                  disabled={commentSubmitting}
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {commentSubmitting ? 'Posting...' : 'Post Comment'}
+                </button>
+              </div>
+
+              {commentError ? (
+                <p className="mt-4 text-sm font-medium text-red-600">{commentError}</p>
+              ) : null}
+
+              <div className="mt-6 space-y-3">
+                {commentLoading ? (
+                  <p className="text-sm text-slate-600">Loading comments...</p>
+                ) : Object.entries(comments).length === 0 ? (
+                  <p className="text-sm text-slate-600">No comments yet.</p>
+                ) : (
+                  Object.entries(comments).map(([userId, message]) => (
+                    <div key={userId} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {currentUserId && currentUserId === userId ? 'You' : userId}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-700">{message}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
           </div>
 
           {/* RIGHT COLUMN: Actions (Sticky Sidebar) */}
@@ -552,11 +756,7 @@ export default function Page() {
             {/* Agent/Contact Block */}
             <section className="rounded-[32px] border border-white/70 bg-white/90 p-6 shadow-sm backdrop-blur">
               <div className="flex items-center gap-4">
-                <img
-                  src={DEFAULT_AGENT.avatar}
-                  alt="Listing agent"
-                  className="h-14 w-14 rounded-full ring-4 ring-blue-50"
-                />
+               
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                     Listed by
@@ -574,14 +774,81 @@ export default function Page() {
               </div>
 
               <div className="mt-6 space-y-3">
-                <button className="w-full rounded-2xl bg-blue-700 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-800 hover:shadow-md">
+                <button
+                  type="button"
+                  onClick={handleOpenContact}
+                  className="w-full rounded-2xl bg-blue-700 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-800 hover:shadow-md"
+                >
                   Contact Owner / Agent
                 </button>
-                <button className="w-full rounded-2xl border-2 border-emerald-600 bg-white px-4 py-3.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50">
+                <button
+                  type="button"
+                  onClick={handleOpenContact}
+                  className="w-full rounded-2xl border-2 border-emerald-600 bg-white px-4 py-3.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+                >
                   Book a Viewing
                 </button>
               </div>
             </section>
+
+            {contactOpen ? (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+                <div className="w-full max-w-md rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">
+                        Contact Details
+                      </p>
+                      <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                        Owner information
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCloseContact}
+                      className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-200"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="mt-6 space-y-4">
+                    {contactLoading ? (
+                      <p className="text-sm text-slate-600">Loading contact details...</p>
+                    ) : contactError ? (
+                      <p className="text-sm font-medium text-red-600">{contactError}</p>
+                    ) : (
+                      <>
+                        <div className="rounded-2xl bg-slate-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Name
+                          </p>
+                          <p className="mt-2 font-semibold text-slate-900">
+                            {contactDetails?.name || 'Not available'}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Phone Number
+                          </p>
+                          <p className="mt-2 font-semibold text-slate-900">
+                            {contactDetails?.phonenumber || 'Not available'}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Email
+                          </p>
+                          <p className="mt-2 font-semibold text-slate-900 break-all">
+                            {contactDetails?.email || 'Not available'}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
           </aside>
         </div>

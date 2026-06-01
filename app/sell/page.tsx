@@ -16,6 +16,13 @@ interface ImagePreview {
 
 export default function AddPropertyPage() {
   const [listingMode, setListingMode] = useState<'rent' | 'sell' | 'land' | null>(null);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactMessage, setContactMessage] = useState<string | null>(null);
+  const [contactChecked, setContactChecked] = useState(false);
+  const [contactHasPhone, setContactHasPhone] = useState(false);
 
   const [formData, setFormData] = useState({
     type: '',
@@ -45,6 +52,58 @@ export default function AddPropertyPage() {
       selectedImages.forEach(image => URL.revokeObjectURL(image.previewUrl));
     };
   }, [selectedImages]);
+
+  const verifyContactDetails = async () => {
+    const token = localStorage.getItem('token23');
+
+    if (!token) {
+      setContactChecked(true);
+      setContactHasPhone(false);
+      return false;
+    }
+
+    setContactLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/api/contact`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to load contact details');
+      }
+
+      const existingPhone = result.data?.phonenumber ? String(result.data.phonenumber) : '';
+      const hasPhone = result.message === 'present' || Boolean(existingPhone.trim());
+
+      setContactPhone(existingPhone);
+      setContactHasPhone(hasPhone);
+      setContactChecked(true);
+
+      if (result.message === 'not present' || !hasPhone) {
+        setContactModalOpen(true);
+        setContactMessage('Add your phone number to continue posting properties.');
+      }
+
+      return hasPhone;
+    } catch (error) {
+      console.error('Failed to verify contact details:', error);
+      setContactChecked(true);
+      setContactHasPhone(false);
+      return false;
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    verifyContactDetails();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -141,6 +200,20 @@ export default function AddPropertyPage() {
       return;
     }
 
+    if (!contactChecked) {
+      const hasPhone = await verifyContactDetails();
+
+      if (!hasPhone) {
+        return;
+      }
+    }
+
+    if (!contactHasPhone) {
+      setContactModalOpen(true);
+      setContactMessage('Add your phone number to continue posting properties.');
+      return;
+    }
+
     // Use FormData to properly send text + files together
     const submitPayload = new FormData();
     
@@ -190,6 +263,50 @@ export default function AddPropertyPage() {
     setFormData({ ...formData, type: type });
   };
 
+  const handleSaveContactPhone = async () => {
+    const token = localStorage.getItem('token23');
+
+    if (!token) {
+      setContactMessage('Please log in before saving your phone number.');
+      return;
+    }
+
+    if (!contactPhone.trim()) {
+      setContactMessage('Phone number is required.');
+      return;
+    }
+
+    setContactSaving(true);
+    setContactMessage(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/api/contactput`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phonenumber: contactPhone.trim() }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to save phone number');
+      }
+
+      setContactPhone(result.data?.phonenumber ? String(result.data.phonenumber) : contactPhone.trim());
+      setContactHasPhone(true);
+      setContactChecked(true);
+      setContactModalOpen(false);
+    } catch (error) {
+      console.error('Failed to save contact phone:', error);
+      setContactMessage('Unable to save phone number right now. Please try again.');
+    } finally {
+      setContactSaving(false);
+    }
+  };
+
   const isRent = listingMode === 'rent';
   const isSell = listingMode === 'sell';
   const isLand = listingMode === 'land';
@@ -233,6 +350,57 @@ export default function AddPropertyPage() {
   // --- STEP 2: The Form Screen ---
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 font-sans flex flex-col items-center">
+      {contactModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">
+              Phone number required
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900">
+              Add your contact number
+            </h2>
+            <p className="mt-4 text-sm text-slate-600">
+              You need a phone number in your profile before creating a listing.
+            </p>
+
+            <div className="mt-5 space-y-3">
+              <label className="block text-sm font-medium text-slate-700">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="Enter phone number"
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            {contactMessage ? (
+              <p className="mt-4 text-sm font-medium text-red-600">{contactMessage}</p>
+            ) : null}
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={handleSaveContactPhone}
+                disabled={contactSaving || contactLoading}
+                className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {contactSaving ? 'Saving...' : 'Save phone number'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactModalOpen(false)}
+                className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="max-w-4xl w-full mb-8 relative">
         <button onClick={() => setListingMode(null)} className="absolute -top-12 left-0 flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
           <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>

@@ -67,6 +67,16 @@ export default function FeaturedProjectsBanner() {
     if (emblaApi) emblaApi.scrollPrev();
   }, [emblaApi]);
 
+  const incrementViews = async (postId: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/increment/api/post/${postId}`, {
+        method: 'PUT',
+      });
+    } catch (incrementError) {
+      console.error('Error incrementing featured property views:', incrementError);
+    }
+  };
+
   const scrollNext = useCallback(() => {
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
@@ -82,7 +92,7 @@ export default function FeaturedProjectsBanner() {
         }
 
         setProperties(result.data || []);
-        console.log("Fetched raised properties:", result.data);
+        
       } catch (fetchError) {
         console.error("Error fetching raised properties:", fetchError);
         setError("Unable to load featured properties right now.");
@@ -126,6 +136,7 @@ export default function FeaturedProjectsBanner() {
                     <Link
                       key={property.postid}
                       href={`/${property.postid}`}
+                        onClick={() => incrementViews(property.postid)}
                       className="relative flex-[0_0_100%] min-w-0 h-[460px] md:h-[560px]"
                     >
                         <img

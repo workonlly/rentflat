@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
@@ -90,8 +91,11 @@ const getRentalHighlights = (project: Project) => {
 };
 
 export default function RentPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [savingPostId, setSavingPostId] = useState<string | null>(null);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -112,6 +116,80 @@ export default function RentPage() {
 
     loadProjects();
   }, []);
+
+  useEffect(() => {
+    const loadSavedIds = async () => {
+      const token = localStorage.getItem('token23');
+
+      if (!token) {
+        setSavedIds([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/user/api/saved`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+          setSavedIds(result.savedIds || []);
+        }
+      } catch (error) {
+        console.error('Error loading saved properties:', error);
+      }
+    };
+
+    loadSavedIds();
+  }, []);
+
+  const handleSaveProperty = async (postId: string) => {
+    const token = localStorage.getItem('token23');
+
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    setSavingPostId(postId);
+
+    try {
+      const isAlreadySaved = savedIds.includes(postId);
+      const response = await fetch(`${API_BASE_URL}/user/api/${postId}`, {
+        method: isAlreadySaved ? 'DELETE' : 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to save property');
+      }
+
+      setSavedIds((current) =>
+        isAlreadySaved ? current.filter((savedId) => savedId !== postId) : [...current, postId]
+      );
+    } catch (error) {
+      console.error('Error saving property:', error);
+    } finally {
+      setSavingPostId(null);
+    }
+  };
+
+  const incrementViews = async (postId: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/increment/api/post/${postId}`, {
+        method: 'PUT',
+      });
+    } catch (error) {
+      console.error('Error incrementing property views:', error);
+    }
+  };
 
   const filteredProjects = projects.filter((project) => {
     const haystack = [project.title, project.city, project.locality, project.propertytype, project.type, project.tagswork?.join(' ')]
@@ -161,6 +239,12 @@ export default function RentPage() {
 
         <div className="space-y-6">
           {filteredProjects.map((project) => (
+              <Link
+                key={project.postid}
+                href={`/${project.postid}`}
+                onClick={() => incrementViews(project.postid)}
+                className="block"
+              >
             <div key={project.postid} className="bg-white rounded-2xl p-3 border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 flex flex-col xl:flex-row gap-4">
               <div className="relative w-full xl:w-[35%] h-64 sm:h-72 rounded-xl overflow-hidden flex-shrink-0 group cursor-pointer">
                 <img src={project.thumnailimage || project.imageurl?.[0] || FALLBACK_IMAGE} alt={project.title || 'Project image'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -177,7 +261,12 @@ export default function RentPage() {
                   ) : null}
                 </div>
 
-                <button className="absolute top-3 right-3 bg-white/20 hover:bg-white/40 p-2 rounded-full text-white backdrop-blur-md transition-colors">
+                <button
+                  type="button"
+                  onClick={() => handleSaveProperty(project.postid)}
+                  disabled={savingPostId === project.postid}
+                  className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-colors disabled:opacity-60 ${savedIds.includes(project.postid) ? 'bg-red-500/85 text-white hover:bg-red-600' : 'bg-white/20 text-white hover:bg-white/40'}`}
+                >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                 </button>
 
@@ -212,7 +301,11 @@ export default function RentPage() {
               </div>
 
               <div className="w-full xl:w-64 border-t xl:border-t-0 xl:border-l border-gray-100 pt-4 xl:pt-0 xl:pl-5 flex flex-col justify-center gap-3">
-                <Link href={`/${project.postid}`} className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-md text-sm text-center">
+                <Link
+                  href={`/${project.postid}`}
+                  onClick={() => incrementViews(project.postid)}
+                  className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-md text-sm text-center"
+                >
                   View Details
                 </Link>
                 <button className="w-full bg-white hover:bg-emerald-50 border-2 border-emerald-600 text-emerald-700 font-bold py-3 px-4 rounded-xl transition-colors flex justify-center items-center gap-2 text-sm">
@@ -221,6 +314,7 @@ export default function RentPage() {
                 </button>
               </div>
             </div>
+              </Link>
           ))}
         </div>
       </div>

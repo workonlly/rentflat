@@ -20,6 +20,7 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [form, setForm] = useState<ProfileForm>({
     name: '',
     phonenumber: '',
@@ -85,13 +86,24 @@ export default function AccountPage() {
         return;
       }
 
+      const formData = new FormData();
+      formData.append('name', form.name);
+      formData.append('phonenumber', form.phonenumber);
+      formData.append('email', form.email);
+      formData.append('password', form.password);
+
+      if (selectedImage) {
+        formData.append('image', selectedImage);
+      } else if (form.imageurl) {
+        formData.append('imageurl', form.imageurl);
+      }
+
       const response = await fetch(`${API_BASE_URL}/user/api/profile`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(form)
+        body: formData
       });
 
       const result = await response.json();
@@ -101,6 +113,7 @@ export default function AccountPage() {
 
       setMessage('Profile updated successfully.');
       setForm((prev) => ({ ...prev, password: '' }));
+      setSelectedImage(null);
     } catch (submitError) {
       console.error('Error updating profile:', submitError);
       setError('Unable to update profile. Please try again.');
@@ -197,14 +210,22 @@ export default function AccountPage() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Profile Image</label>
               <input
-                type="url"
-                value={form.imageurl}
-                onChange={(e) => handleChange('imageurl', e.target.value)}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setSelectedImage(file);
+                  if (file) {
+                    handleChange('imageurl', URL.createObjectURL(file));
+                  }
+                }}
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                placeholder="https://example.com/profile.jpg"
               />
+              <p className="mt-2 text-xs text-gray-500">
+                Upload a new image to store it in Supabase Storage. If you do not choose a file, the existing image URL stays in place.
+              </p>
             </div>
           </div>
 
