@@ -226,7 +226,7 @@ export default function RentPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <div className="relative inline-block mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 pb-2">Properties for Rent in Gurgaon</h1>
+            <h1 className="text-3xl font-bold text-gray-900 pb-2">Properties for Rent </h1>
             <div className="absolute bottom-0 left-0 w-16 h-1 bg-blue-700 rounded-full"></div>
           </div>
 
