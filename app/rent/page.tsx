@@ -94,6 +94,10 @@ export default function RentPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [rentRangeFilter, setRentRangeFilter] = useState('all');
+  const [bhkFilter, setBhkFilter] = useState('all');
+  const [furnishingFilter, setFurnishingFilter] = useState('all');
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState('all');
   const [savingPostId, setSavingPostId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
 
@@ -192,12 +196,29 @@ export default function RentPage() {
   };
 
   const filteredProjects = projects.filter((project) => {
-    const haystack = [project.title, project.city, project.locality, project.propertytype, project.type, project.tagswork?.join(' ')]
+    const haystack = [project.title, project.description, project.city, project.locality, project.propertytype, project.type, project.tagswork?.join(' ')]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
 
-    return haystack.includes(searchTerm.toLowerCase());
+    const matchesSearch = haystack.includes(searchTerm.toLowerCase());
+
+    const rentValue = Number(project.rent || 0);
+    const matchesRentRange = (() => {
+      if (rentRangeFilter === 'all') return true;
+      if (Number.isNaN(rentValue) || rentValue === 0) return false;
+
+      if (rentRangeFilter === 'under15') return rentValue < 15000;
+      if (rentRangeFilter === '15to30') return rentValue >= 15000 && rentValue <= 30000;
+      if (rentRangeFilter === '30to50') return rentValue > 30000 && rentValue <= 50000;
+      return rentValue > 50000;
+    })();
+
+    const matchesBhk = bhkFilter === 'all' || String(project.bhk ?? '') === bhkFilter;
+    const matchesFurnishing = furnishingFilter === 'all' || (project.furnishing || '').toLowerCase() === furnishingFilter;
+    const matchesPropertyType = propertyTypeFilter === 'all' || (project.propertytype || '').toLowerCase() === propertyTypeFilter;
+
+    return matchesSearch && matchesRentRange && matchesBhk && matchesFurnishing && matchesPropertyType;
   });
 
   return (
@@ -223,17 +244,37 @@ export default function RentPage() {
               </svg>
             </div>
 
-            <button className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 hover:text-blue-700 flex items-center gap-2 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-              All Filters
-            </button>
+            <select value={rentRangeFilter} onChange={(e) => setRentRangeFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Rent Ranges</option>
+              <option value="under15">Under 15K</option>
+              <option value="15to30">15K - 30K</option>
+              <option value="30to50">30K - 50K</option>
+              <option value="above50">Above 50K</option>
+            </select>
 
-            {['Rent Range', 'BHK', 'Furnishing', 'Tenant Type'].map((filter) => (
-              <button key={filter} className="hidden sm:flex px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 hover:text-blue-700 items-center gap-2 transition-colors shadow-sm">
-                {filter}
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </button>
-            ))}
+            <select value={bhkFilter} onChange={(e) => setBhkFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All BHK</option>
+              <option value="1">1 BHK</option>
+              <option value="2">2 BHK</option>
+              <option value="3">3 BHK</option>
+              <option value="4">4 BHK</option>
+            </select>
+
+            <select value={furnishingFilter} onChange={(e) => setFurnishingFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Furnishing</option>
+              <option value="unfurnished">Unfurnished</option>
+              <option value="semi-furnished">Semi-Furnished</option>
+              <option value="fully furnished">Fully Furnished</option>
+            </select>
+
+            <select value={propertyTypeFilter} onChange={(e) => setPropertyTypeFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Property Types</option>
+              <option value="apartment">Apartment</option>
+              <option value="independent house">Independent House</option>
+              <option value="villa">Villa</option>
+              <option value="builder floor">Builder Floor</option>
+              <option value="hostel">Hostel</option>
+            </select>
           </div>
         </div>
 

@@ -82,6 +82,10 @@ export default function SalePage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [budgetFilter, setBudgetFilter] = useState('all');
+  const [bhkFilter, setBhkFilter] = useState('all');
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState('all');
+  const [constructionFilter, setConstructionFilter] = useState('all');
   const [savingPostId, setSavingPostId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
 
@@ -185,7 +189,24 @@ export default function SalePage() {
       .join(' ')
       .toLowerCase();
 
-    return haystack.includes(searchTerm.toLowerCase());
+    const matchesSearch = haystack.includes(searchTerm.toLowerCase());
+
+    const priceValue = Number(project.price || 0);
+    const matchesBudget = (() => {
+      if (budgetFilter === 'all') return true;
+      if (Number.isNaN(priceValue) || priceValue === 0) return false;
+
+      if (budgetFilter === 'under50') return priceValue < 5000000;
+      if (budgetFilter === '50to100') return priceValue >= 5000000 && priceValue <= 10000000;
+      if (budgetFilter === '100to200') return priceValue > 10000000 && priceValue <= 20000000;
+      return priceValue > 20000000;
+    })();
+
+    const matchesBhk = bhkFilter === 'all' || String(project.bhk ?? '') === bhkFilter;
+    const matchesPropertyType = propertyTypeFilter === 'all' || (project.propertytype || '').toLowerCase() === propertyTypeFilter;
+    const matchesConstruction = constructionFilter === 'all' || (project.age || '').toLowerCase().includes(constructionFilter);
+
+    return matchesSearch && matchesBudget && matchesBhk && matchesPropertyType && matchesConstruction;
   });
 
   return (
@@ -211,17 +232,37 @@ export default function SalePage() {
               </svg>
             </div>
 
-            <button className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 hover:text-blue-700 flex items-center gap-2 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-              All Filters
-            </button>
+            <select value={budgetFilter} onChange={(e) => setBudgetFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Budgets</option>
+              <option value="under50">Under 50L</option>
+              <option value="50to100">50L - 1Cr</option>
+              <option value="100to200">1Cr - 2Cr</option>
+              <option value="above200">Above 2Cr</option>
+            </select>
 
-            {['Budget', 'BHK', 'Property Type', 'Construction Status'].map((filter) => (
-              <button key={filter} className="hidden sm:flex px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 hover:text-blue-700 items-center gap-2 transition-colors shadow-sm">
-                {filter}
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </button>
-            ))}
+            <select value={bhkFilter} onChange={(e) => setBhkFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All BHK</option>
+              <option value="1">1 BHK</option>
+              <option value="2">2 BHK</option>
+              <option value="3">3 BHK</option>
+              <option value="4">4 BHK</option>
+            </select>
+
+            <select value={propertyTypeFilter} onChange={(e) => setPropertyTypeFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Property Types</option>
+              <option value="apartment">Apartment</option>
+              <option value="independent house">Independent House</option>
+              <option value="villa">Villa</option>
+              <option value="builder floor">Builder Floor</option>
+              <option value="plot">Plot</option>
+            </select>
+
+            <select value={constructionFilter} onChange={(e) => setConstructionFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Construction</option>
+              <option value="under construction">Under Construction</option>
+              <option value="new">New</option>
+              <option value="years">Years</option>
+            </select>
           </div>
         </div>
 
@@ -267,22 +308,18 @@ export default function SalePage() {
               </div>
 
               <div className="flex-1 flex flex-col justify-between py-2">
-                <div className="flex gap-4 items-start">
-                  <div className="w-24 text-sm font-bold text-gray-900 leading-tight">Project Insights</div>
-                  <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                    <div className="flex gap-2 min-w-[200px]">
-                      <div className="relative w-28 h-16 bg-gray-200 rounded-lg overflow-hidden cursor-pointer group">
-                        <img src={project.imageurl?.[0] || project.thumnailimage || FALLBACK_IMAGE} className="w-full h-full object-cover blur-[1px]" alt="Preview" />
-                        <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center">
-                          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center pl-1 shadow-lg">
-                            <svg className="w-4 h-4 text-blue-700" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6V4z" /></svg>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col justify-center">
-                        <span className="text-xs font-bold text-gray-900 line-clamp-1">{project.propertytype || 'Property'}</span>
-                        <span className="text-[10px] text-gray-500 font-medium">{project.views ?? 0} views</span>
-                      </div>
+                <div className="flex items-start gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  <div className="flex min-w-[220px] flex-col justify-center gap-1 rounded-xl bg-gray-50 px-4 py-3 border border-gray-100">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                      Listing Overview
+                    </span>
+                    <h3 className="text-base font-bold text-gray-900 line-clamp-1">
+                      {project.title || 'Untitled Property'}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-gray-500">
+                      <span>{project.propertytype || 'Property'}</span>
+                      <span>•</span>
+                      <span>{project.views ?? 0} views</span>
                     </div>
                   </div>
                 </div>

@@ -100,6 +100,10 @@ export default function Component2() {
   const router = useRouter();
   const [projectss, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [bhkFilter, setBhkFilter] = useState('all');
+  const [furnishingFilter, setFurnishingFilter] = useState('all');
+  const [priceFilter, setPriceFilter] = useState('all');
   const [savingPostId, setSavingPostId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
 
@@ -200,6 +204,7 @@ export default function Component2() {
   const filteredProjects = projectss.filter((project) => {
     const haystack = [
       project.title,
+      project.description,
       project.city,
       project.locality,
       project.propertytype,
@@ -210,7 +215,23 @@ export default function Component2() {
       .join(' ')
       .toLowerCase();
 
-    return haystack.includes(searchTerm.toLowerCase());
+    const matchesSearch = haystack.includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === 'all' || (project.type || '').toLowerCase() === typeFilter;
+    const matchesBhk = bhkFilter === 'all' || String(project.bhk ?? '') === bhkFilter;
+    const matchesFurnishing = furnishingFilter === 'all' || (project.furnishing || '').toLowerCase() === furnishingFilter;
+
+    const priceValue = Number(project.type === 'rent' ? project.rent : project.price || 0);
+    const matchesPrice = (() => {
+      if (priceFilter === 'all') return true;
+      if (Number.isNaN(priceValue) || priceValue === 0) return false;
+
+      if (priceFilter === 'under20') return priceValue < 2000000;
+      if (priceFilter === '20to50') return priceValue >= 2000000 && priceValue <= 5000000;
+      if (priceFilter === '50to100') return priceValue > 5000000 && priceValue <= 10000000;
+      return priceValue > 10000000;
+    })();
+
+    return matchesSearch && matchesType && matchesBhk && matchesFurnishing && matchesPrice;
   });
 
   return (
@@ -236,17 +257,35 @@ export default function Component2() {
               </svg>
             </div>
 
-            <button className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 hover:text-blue-700 flex items-center gap-2 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-              All Filters
-            </button>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Types</option>
+              <option value="rent">Rent</option>
+              <option value="sell">Sell</option>
+              <option value="land">Land</option>
+            </select>
 
-            {['Rent Range', 'BHK', 'Furnishing', 'Tenant Type'].map((filter) => (
-              <button key={filter} className="hidden sm:flex px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 hover:text-blue-700 items-center gap-2 transition-colors shadow-sm">
-                {filter}
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </button>
-            ))}
+            <select value={bhkFilter} onChange={(e) => setBhkFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All BHK</option>
+              <option value="1">1 BHK</option>
+              <option value="2">2 BHK</option>
+              <option value="3">3 BHK</option>
+              <option value="4">4 BHK</option>
+            </select>
+
+            <select value={furnishingFilter} onChange={(e) => setFurnishingFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Furnishing</option>
+              <option value="unfurnished">Unfurnished</option>
+              <option value="semi-furnished">Semi-Furnished</option>
+              <option value="fully furnished">Fully Furnished</option>
+            </select>
+
+            <select value={priceFilter} onChange={(e) => setPriceFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-400 focus:outline-none shadow-sm">
+              <option value="all">All Prices</option>
+              <option value="under20">Under 20L</option>
+              <option value="20to50">20L - 50L</option>
+              <option value="50to100">50L - 1Cr</option>
+              <option value="above100">Above 1Cr</option>
+            </select>
           </div>
         </div>
 
