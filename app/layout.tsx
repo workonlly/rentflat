@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 
 // Updated to reflect your actual app instead of the Next.js default
 export const metadata: Metadata = {
-  title: "FlatRent | Find Your Perfect Home",
-  description: "Rent, buy, and sell properties effortlessly with FlatRent.",
+  title: "Orentra | Find Your Perfect Home",
+  description: "Rent, buy, and sell properties effortlessly with Orentra.",
 };
 
 export default function RootLayout({
