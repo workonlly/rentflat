@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import AdUnit from '../AdUnit';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
@@ -329,6 +330,8 @@ export default function RentPage() {
             </select>
           </div>
         </div>
+
+        <AdUnit slotId="1234567890" />
 
         <div className="space-y-6">
           {filteredProjects.map((project) => (

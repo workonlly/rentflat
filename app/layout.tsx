@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import SessionWrapper from "./components/SessionWrapper";
 import HeaderClient from "./components/HeaderClient";
@@ -37,6 +38,14 @@ export default function RootLayout({
           name="google-adsense-account"
           content="ca-pub-9439206564301038"
         />
+        {process.env.NEXT_PUBLIC_ADSENSE_ID ? (
+          <Script
+            async
+            crossOrigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_ID}`}
+            strategy="afterInteractive"
+          />
+        ) : null}
       </head>
       {/* Set a clean base background and text color */}
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
