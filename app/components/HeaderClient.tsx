@@ -49,20 +49,8 @@ export default function HeaderClient() {
             className="flex items-center group focus:outline-none"
             aria-label="FlatRent Home"
           >
-            <svg
-              className="h-8 w-8 text-blue-300 group-hover:text-blue-200 transition-colors"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-              />
-            </svg>
-            <span className="ml-2 text-2xl font-bold tracking-tight">Orentra</span>
+           <img src="logo.png" alt="" width="52" height="52" />
+            <img src="heading.png" alt="" width="100" height="30" />
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8">
