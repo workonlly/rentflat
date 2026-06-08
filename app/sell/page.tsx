@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from 'next/dist/client/components/navigation';
+import router from 'next/dist/shared/lib/router/router';
 import React, { useState, useEffect } from 'react';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
@@ -23,6 +25,41 @@ export default function AddPropertyPage() {
   const [contactMessage, setContactMessage] = useState<string | null>(null);
   const [contactChecked, setContactChecked] = useState(false);
   const [contactHasPhone, setContactHasPhone] = useState(false);
+  const router = useRouter();
+ useEffect(() => {
+    const verifyToken = async () => {
+      const token = localStorage.getItem('token23');
+
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          localStorage.removeItem('token23');
+          localStorage.removeItem('username');
+          localStorage.removeItem('userId');
+          router.replace('/login');
+          return;
+        }
+
+    
+      } catch (error) {
+        console.error('Error verifying token:', error);
+        router.replace('/login');
+      }
+    };
+
+    verifyToken();
+  }, []);
 
   const [formData, setFormData] = useState({
     type: '',
@@ -436,6 +473,7 @@ export default function AddPropertyPage() {
                     <option value="Independent House">Independent House</option>
                     <option value="Villa">Villa</option>
                     <option value="Builder Floor">Builder Floor</option>
+                    <option value="Shop">Shop</option>
                     {isRent && <option value="Hostel">Hostel</option>}
                   </select>
                 </div>
