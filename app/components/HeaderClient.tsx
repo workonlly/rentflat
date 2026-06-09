@@ -77,7 +77,7 @@ export default function HeaderClient() {
 {token ? (
   // --- AUTHENTICATED STATE ---
   <div className="flex items-center space-x-3 sm:space-x-5">
-    
+    <Link href="https://www.instagram.com/official_orentra?igsh=dzNodDdpMW5mOG8w" className='hover:scale-105 hover:shadow-lg'><img src="insta.svg" alt="" width={32} height={32} /></Link>
     {/* Quick Action Button (Hidden on very small screens) */}
     <Link 
       href="/sell" 
@@ -147,6 +147,7 @@ export default function HeaderClient() {
 ) : (
   // --- UNAUTHENTICATED STATE ---
   <div className="flex items-center space-x-3">
+    <Link href="https://www.instagram.com/official_orentra?igsh=dzNodDdpMW5mOG8w" className='hover:scale-105 hover:shadow-lg'><img src="insta.svg" alt="" width={32} height={32} /></Link>
     <Link
       href="/login"
       className="px-4 py-2 text-sm font-semibold rounded-full text-white hover:text-blue-200 hover:bg-blue-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900"
